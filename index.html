@@ -197,6 +197,15 @@
   .result-retry { border: none; background: var(--error); color: #fff; border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
 
   .footer { text-align: center; padding: 16px 0 10px; color: var(--text-mute); font-size: 11px; letter-spacing: 2px; opacity: 0.5; }
+  /* 取消/上傳動作選單 */
+  .action-sheet-bg { position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:888;display:flex;align-items:flex-end;justify-content:center; }
+  .action-sheet { background:var(--paper);width:100%;max-width:480px;border-radius:24px 24px 0 0;padding:20px 20px 36px;display:flex;flex-direction:column;gap:10px; }
+  .action-sheet-title { font-size:13px;color:var(--text-mute);text-align:center;letter-spacing:1px;margin-bottom:4px; }
+  .action-btn { border:none;border-radius:14px;padding:16px;font-size:16px;font-weight:700;letter-spacing:2px;cursor:pointer;font-family:"Noto Serif TC","PingFang TC",serif; }
+  .action-btn-danger  { background:#FFF0F0;color:var(--error); }
+  .action-btn-primary { background:linear-gradient(135deg,var(--accent),var(--primary-light));color:#fff; }
+  .action-btn-muted   { background:#F7FAFC;color:var(--text-mute); }
+
   .hidden { display: none !important; }
 </style>
 </head>
@@ -267,7 +276,10 @@
         </div>
         <p class="confirm-note">✏️ 點任何欄位可直接修改・切換編號自動儲存</p>
 
-        <button class="btn btn-primary" onclick="uploadAllConfirmed()">全 部 上 傳 ✓</button>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <button class="btn btn-secondary" onclick="showCancelSheet()">取 消</button>
+          <button class="btn btn-primary" onclick="showUploadSheet()">上 傳</button>
+        </div>
       </div>
       <div id="batch-uploading" class="hidden">
         <div class="uploading"><div class="spinner"></div><div class="uploading-text">上 傳 中</div><div class="uploading-hint">寫入訂單系統中，請稍候...</div></div>
@@ -329,7 +341,7 @@
         </div>
         <p class="confirm-note">✏️ 點任何欄位可直接修改</p>
         <div class="btn-row">
-          <button class="btn btn-secondary" onclick="resetCamera()">重 拍</button>
+          <button class="btn btn-secondary" onclick="resetCamera()">取 消</button>
           <button class="btn btn-primary" onclick="confirmAndUploadSingle()">確 認 上 傳 ✓</button>
         </div>
       </div>
@@ -367,6 +379,26 @@
     <label>Webhook 密碼</label>
     <input type="password" id="inputWebhookKey" placeholder="向 Jason 取得">
     <button class="btn btn-primary save-btn" onclick="saveSettings()">儲 存 設 定</button>
+  </div>
+</div>
+
+<!-- 上傳動作選單 -->
+<div id="uploadSheet" class="action-sheet-bg hidden" onclick="closeSheets()">
+  <div class="action-sheet" onclick="event.stopPropagation()">
+    <div class="action-sheet-title">選擇上傳範圍</div>
+    <button class="action-btn action-btn-primary" onclick="uploadCurrentOnly()">上 傳 本 張</button>
+    <button class="action-btn action-btn-primary" onclick="uploadAllConfirmed()">上 傳 全 部</button>
+    <button class="action-btn action-btn-muted" onclick="closeSheets()">返 回</button>
+  </div>
+</div>
+
+<!-- 取消動作選單 -->
+<div id="cancelSheet" class="action-sheet-bg hidden" onclick="closeSheets()">
+  <div class="action-sheet" onclick="event.stopPropagation()">
+    <div class="action-sheet-title">選擇取消範圍</div>
+    <button class="action-btn action-btn-danger" onclick="cancelCurrentOnly()">取 消 本 張</button>
+    <button class="action-btn action-btn-danger" onclick="cancelAll()">取 消 全 部</button>
+    <button class="action-btn action-btn-muted" onclick="closeSheets()">返 回</button>
   </div>
 </div>
 
@@ -424,6 +456,61 @@ window.addEventListener('load', () => {
 });
 
 // ── Tab ──
+// ── Action Sheet（上傳/取消選單）──
+function showUploadSheet() {
+  if (!batchEditedData[batchCurrentTab]?.skipped) {
+    batchEditedData[batchCurrentTab].data = readConfirmTable(document.getElementById('batchConfirmTable'));
+  }
+  document.getElementById('uploadSheet').classList.remove('hidden');
+}
+
+function showCancelSheet() {
+  document.getElementById('cancelSheet').classList.remove('hidden');
+}
+
+function closeSheets() {
+  document.getElementById('uploadSheet').classList.add('hidden');
+  document.getElementById('cancelSheet').classList.add('hidden');
+}
+
+async function uploadCurrentOnly() {
+  closeSheets();
+  const item = batchEditedData[batchCurrentTab];
+  if (!item || item.skipped) return;
+  const data = readConfirmTable(document.getElementById('batchConfirmTable'));
+  showBatchSection('uploading');
+  try {
+    await writeToSheets(data);
+    item.uploaded = true;
+    batchResults.success++;
+    const tabBtn = document.getElementById(`tab-btn-${batchCurrentTab}`);
+    if (tabBtn) { tabBtn.classList.remove('active'); tabBtn.classList.add('done'); }
+  } catch(e) {
+    batchResults.fail++;
+    alert(`上傳失敗：${e.message}`);
+  }
+  buildBatchTabs();
+  loadBatchTab(batchCurrentTab);
+  showBatchSection('confirm');
+}
+
+function cancelCurrentOnly() {
+  closeSheets();
+  batchEditedData[batchCurrentTab].skipped = true;
+  const remaining = batchEditedData.filter(it => !it.skipped && !it.uploaded);
+  buildBatchTabs();
+  if (remaining.length === 0) {
+    showBatchDone(batchEditedData.filter(it => it.uploaded).map(it => ({item: it, ok: true})));
+  } else {
+    batchCurrentTab = remaining[0].idx;
+    loadBatchTab(batchCurrentTab);
+    showBatchSection('confirm');
+  }
+}
+
+function cancelAll() { closeSheets(); resetBatch(); }
+
+// ── Tab 切換 ──
 function switchTab(name) {
   ['batch','camera'].forEach(n => {
     document.getElementById('pane-'+n).classList.toggle('active', n===name);
@@ -451,7 +538,12 @@ function buildConfirmTable(tableEl, data) {
   FIELDS.forEach(f => {
     const val = data[f.key] || '';
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td class="field-label">${f.label}</td><td><input class="field-input" data-key="${f.key}" value="${val.toString().replace(/"/g,'&quot;')}" placeholder="（未辨識）"></td>`;
+    if (f.key === '預計交期') {
+      // 日期欄用 date picker
+      tr.innerHTML = `<td class="field-label">${f.label}</td><td><input class="field-input" type="date" data-key="${f.key}" value="${val}" style="color:var(--text);width:100%"></td>`;
+    } else {
+      tr.innerHTML = `<td class="field-label">${f.label}</td><td><input class="field-input" data-key="${f.key}" value="${val.toString().replace(/"/g,'&quot;')}" placeholder="（未辨識）"></td>`;
+    }
     tableEl.appendChild(tr);
   });
 }
@@ -569,10 +661,11 @@ async function callGemini(base64Image) {
 // ── 寫入 Sheets（用 GET 避免 CORS）──
 async function writeToSheets(data) {
   const {webhookUrl, webhookKey} = getConfig();
-  // Apps Script POST 有 CORS 限制，改用 GET + query string 繞過
-  const payload = encodeURIComponent(JSON.stringify({apiKey: webhookKey, data}));
-  const url = `${webhookUrl}?payload=${payload}`;
-  const res = await fetch(url, {method: 'GET'});
+  const res = await fetch(webhookUrl, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({apiKey: webhookKey, data})
+  });
   if (!res.ok) throw new Error(`寫入失敗: HTTP ${res.status}`);
   const result = await res.json();
   if (!result.success) throw new Error(result.error || '寫入失敗');
@@ -586,7 +679,8 @@ let batchResults = {success:0, fail:0, errors:[]};
 function triggerBatchPick() { document.getElementById('batchInput').click(); }
 
 async function handleBatchFiles(event) {
-  const newFiles = Array.from(event.target.files);
+  const newFiles = Array.from(event.target.files)
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, {numeric: true}));
   if (!newFiles.length) return;
   const compressed = await Promise.all(newFiles.map(f => compressImage(f)));
   compressed.forEach((c, i) => batchFiles.push({file: newFiles[i], ...c}));
