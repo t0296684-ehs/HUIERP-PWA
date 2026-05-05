@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="阿輝師訂單">
+<meta name="theme-color" content="#1F3A5F">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' fill='%231F3A5F'/%3E%3Ctext x='90' y='118' text-anchor='middle' font-size='100' fill='%23C9A961'%3E🖌️%3C/text%3E%3C/svg%3E">
+<title>阿輝師訂單</title>
+<style>
+  /* ============== 設計理念 ============== */
+  /* 給年長使用者的極簡介面: 大字、大按鈕、高對比、零干擾 */
+  /* 配色: 與 Excel 主系統一致的現代商務藍灰 */
+  
+  :root {
+    --primary: #1E3A5F;
+    --primary-light: #2C5282;
+    --accent: #3182CE;
+    --accent-light: #4299E1;
+    --bg: #F7FAFC;
+    --paper: #FFFFFF;
+    --text: #1A202C;
+    --text-light: #4A5568;
+    --text-mute: #718096;
+    --border: #CBD5E0;
+    --success: #2F855A;
+    --error: #C53030;
+    --warning: #B7791F;
+    --shadow-sm: 0 2px 8px rgba(30,58,95,0.08);
+    --shadow-md: 0 8px 24px rgba(30,58,95,0.12);
+    --shadow-lg: 0 16px 48px rgba(30,58,95,0.18);
+  }
+  
+  @font-face {
+    font-family: 'NotoSerifTC';
+    src: local('Noto Serif TC'), local('PingFang TC');
+  }
+  
+  * {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow-x: hidden;
+    font-family: -apple-system, "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+  
+  body {
+    background: 
+      radial-gradient(circle at 15% 10%, rgba(201,169,97,0.08) 0%, transparent 40%),
+      radial-gradient(circle at 85% 90%, rgba(31,58,95,0.05) 0%, transparent 40%),
+      var(--bg);
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  
+  .app {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 24px 20px 40px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* ============== Header ============== */
+  .header {
+    text-align: center;
+    padding: 16px 0 32px;
+    border-bottom: 2px solid var(--accent);
+    margin-bottom: 32px;
+    position: relative;
+  }
+  
+  .header::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 6px;
+    background: var(--accent);
+    border-radius: 3px;
+  }
+  
+  .header .brand {
+    font-family: "Noto Serif TC", "PingFang TC", serif;
+    font-size: 14px;
+    letter-spacing: 6px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+  
+  .header h1 {
+    margin: 0;
+    font-family: "Noto Serif TC", "PingFang TC", serif;
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--primary);
+    letter-spacing: 4px;
+  }
+  
+  .header .subtitle {
+    margin-top: 8px;
+    font-size: 14px;
+    color: var(--text-light);
+    letter-spacing: 1px;
+  }
+  
+  /* ============== 主要內容區 ============== */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  
+  /* ============== 步驟指示 ============== */
+  .step-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    background: var(--primary);
+    color: #FFFFFF;
+    border-radius: 100px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    margin-bottom: 16px;
+    align-self: flex-start;
+  }
+  
+  .step-badge .dot {
+    width: 6px;
+    height: 6px;
+    background: #FFFFFF;
+    border-radius: 50%;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  
+  .step-title {
+    font-family: "Noto Serif TC", "PingFang TC", serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--primary);
+    margin: 0 0 8px;
+    letter-spacing: 2px;
+  }
+  
+  .step-desc {
+    font-size: 16px;
+    color: var(--text-light);
+    margin-bottom: 32px;
+    line-height: 1.6;
+  }
+  
+  /* ============== 拍照按鈕 (主要 CTA) ============== */
+  .camera-btn {
+    width: 100%;
+    aspect-ratio: 1;
+    max-height: 360px;
+    border: none;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+    color: #FFFFFF;
+    border-radius: 32px;
+    font-family: "Noto Serif TC", "PingFang TC", serif;
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    cursor: pointer;
+    box-shadow: var(--shadow-lg);
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+  }
+  
+  .camera-btn::before {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    border: 2px solid var(--accent);
+    border-radius: 28px;
+    pointer-events: none;
+    opacity: 0.4;
+  }
+  
+  .camera-btn:active {
+    transform: scale(0.97);
+    box-shadow: var(--shadow-md);
+  }
+  
+  .camera-btn .icon {
+    font-size: 80px;
+    line-height: 1;
+    filter: drop-shadow(0 4px 12px rgba(0,0,0,0.2));
+  }
+  
+  .camera-btn .label {
+    font-size: 28px;
+    letter-spacing: 6px;
+  }
+  
+  .camera-btn .hint {
+    font-size: 13px;
+    letter-spacing: 2px;
+    color: rgba(229,194,117,0.7);
+    font-family: -apple-system, sans-serif;
+    font-weight: 400;
+  }
+  
+  #fileInput {
+    display: none;
+  }
+  
+  /* ============== 預覽區 ============== */
+  .preview {
+    width: 100%;
+    background: var(--paper);
+    border-radius: 24px;
+    padding: 16px;
+    box-shadow: var(--shadow-md);
+    margin-bottom: 20px;
+    border: 2px solid rgba(201,169,97,0.2);
+  }
+  
+  .preview img {
+    width: 100%;
+    border-radius: 16px;
+    display: block;
+  }
+  
+  /* ============== 動作按鈕 ============== */
+  .btn-row {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 12px;
+    margin-top: 16px;
+  }
+  
+  .btn {
+    border: none;
+    border-radius: 20px;
+    padding: 22px 16px;
+    font-family: inherit;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    box-shadow: var(--shadow-sm);
+  }
+  
+  .btn:active {
+    transform: scale(0.97);
+  }
+  
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--primary-light) 100%);
+    color: #FFFFFF;
+  }
+  
+  .btn-secondary {
+    background: var(--paper);
+    color: var(--text-light);
+    border: 2px solid #E5DCC8;
+  }
+  
+  /* ============== 上傳中狀態 ============== */
+  .uploading {
+    text-align: center;
+    padding: 60px 20px;
+    background: var(--paper);
+    border-radius: 32px;
+    box-shadow: var(--shadow-md);
+  }
+  
+  .spinner {
+    width: 80px;
+    height: 80px;
+    border: 6px solid rgba(31,58,95,0.1);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 32px;
+  }
+  
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  
+  .uploading-text {
+    font-family: "Noto Serif TC", serif;
+    font-size: 28px;
+    color: var(--primary);
+    font-weight: 700;
+    letter-spacing: 4px;
+    margin-bottom: 8px;
+  }
+  
+  .uploading-hint {
+    font-size: 15px;
+    color: var(--text-light);
+    letter-spacing: 1px;
+  }
+  
+  /* ============== 完成狀態 ============== */
+  .done {
+    text-align: center;
+    padding: 40px 24px;
+    background: var(--paper);
+    border-radius: 32px;
+    box-shadow: var(--shadow-md);
+    border: 3px solid var(--success);
+    animation: slide-up 0.5s ease-out;
+  }
+  
+  @keyframes slide-up {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .done-icon {
+    width: 100px;
+    height: 100px;
+    margin: 0 auto 24px;
+    background: var(--success);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 56px;
+    color: white;
+    animation: pop 0.5s ease-out 0.2s both;
+  }
+  
+  @keyframes pop {
+    0% { transform: scale(0); }
+    60% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+  }
+  
+  .done-title {
+    font-family: "Noto Serif TC", serif;
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--success);
+    letter-spacing: 6px;
+    margin: 0 0 12px;
+  }
+  
+  .done-msg {
+    font-size: 18px;
+    color: var(--text);
+    line-height: 1.7;
+    margin-bottom: 8px;
+  }
+  
+  .done-detail {
+    background: rgba(45,122,79,0.08);
+    padding: 16px;
+    border-radius: 16px;
+    margin: 24px 0;
+    text-align: left;
+    font-size: 15px;
+    line-height: 2;
+    color: var(--text);
+  }
+  
+  .done-detail strong {
+    color: var(--primary);
+    margin-right: 8px;
+  }
+  
+  /* ============== 錯誤狀態 ============== */
+  .error {
+    background: #FFF4F4;
+    border: 2px solid var(--error);
+    border-radius: 24px;
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+  
+  .error-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--error);
+    margin: 0 0 8px;
+    letter-spacing: 2px;
+  }
+  
+  .error-msg {
+    font-size: 15px;
+    color: var(--text);
+    line-height: 1.6;
+  }
+  
+  /* ============== 設定按鈕 (右上角) ============== */
+  .settings-btn {
+    position: absolute;
+    top: 16px;
+    right: 0;
+    width: 44px;
+    height: 44px;
+    border: none;
+    background: transparent;
+    color: var(--primary);
+    font-size: 24px;
+    cursor: pointer;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+  }
+  
+  .settings-btn:active {
+    opacity: 1;
+  }
+  
+  /* ============== 設定彈窗 ============== */
+  .modal-bg {
+    position: fixed;
+    inset: 0;
+    background: rgba(15,36,64,0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 999;
+    animation: fade-in 0.2s ease-out;
+  }
+  
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  .modal {
+    background: var(--paper);
+    width: 100%;
+    max-width: 480px;
+    border-radius: 32px 32px 0 0;
+    padding: 28px 24px 32px;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: slide-up-modal 0.3s ease-out;
+  }
+  
+  @keyframes slide-up-modal {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+  
+  .modal h2 {
+    font-family: "Noto Serif TC", serif;
+    font-size: 24px;
+    color: var(--primary);
+    margin: 0 0 8px;
+    letter-spacing: 2px;
+  }
+  
+  .modal p {
+    font-size: 14px;
+    color: var(--text-light);
+    margin: 0 0 24px;
+    line-height: 1.6;
+  }
+  
+  .modal label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary);
+    margin: 16px 0 6px;
+    letter-spacing: 1px;
+  }
+  
+  .modal input {
+    width: 100%;
+    padding: 14px 16px;
+    border: 2px solid #E5DCC8;
+    border-radius: 12px;
+    font-size: 15px;
+    font-family: inherit;
+    background: var(--bg);
+    color: var(--text);
+    transition: border-color 0.2s;
+  }
+  
+  .modal input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  
+  .modal-btns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 24px;
+  }
+  
+  /* ============== Footer ============== */
+  .footer {
+    text-align: center;
+    padding: 32px 0 8px;
+    color: var(--text-light);
+    font-size: 12px;
+    letter-spacing: 2px;
+    opacity: 0.6;
+  }
+  
+  /* hidden 通用 */
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+  <div class="app">
+    
+    <!-- Header -->
+    <div class="header">
+      <button class="settings-btn" onclick="openSettings()">⚙️</button>
+      <div class="brand">A H U I  ·  S T U D I O</div>
+      <h1>阿輝師</h1>
+      <div class="subtitle">文 昌 筆 訂 單 上 傳</div>
+    </div>
+    
+    <!-- 主內容 -->
+    <div class="main">
+      
+      <!-- 狀態 1: 等待拍照 -->
+      <div id="state-idle">
+        <div class="step-badge"><span class="dot"></span>準備拍照</div>
+        <h2 class="step-title">拍下紙條</h2>
+        <p class="step-desc">把客人的訂單紙條放平,按下面按鈕拍照</p>
+        
+        <button class="camera-btn" onclick="document.getElementById('fileInput').click()">
+          <span class="icon">📸</span>
+          <span class="label">拍 照</span>
+          <span class="hint">TAP TO CAPTURE</span>
+        </button>
+        <input type="file" id="fileInput" accept="image/*" capture="environment" onchange="handleFile(event)">
+      </div>
+      
+      <!-- 狀態 2: 預覽 -->
+      <div id="state-preview" class="hidden">
+        <div class="step-badge"><span class="dot"></span>確認照片</div>
+        <h2 class="step-title">看清楚了嗎</h2>
+        <p class="step-desc">字看得清楚,就按「送出」。看不清要重拍</p>
+        
+        <div class="preview">
+          <img id="previewImg" alt="">
+        </div>
+        
+        <div class="btn-row">
+          <button class="btn btn-secondary" onclick="resetApp()">重 拍</button>
+          <button class="btn btn-primary" onclick="uploadPhoto()">送 出 ✓</button>
+        </div>
+      </div>
+      
+      <!-- 狀態 3: 上傳中 -->
+      <div id="state-uploading" class="hidden">
+        <div class="uploading">
+          <div class="spinner"></div>
+          <div class="uploading-text">辨 識 中</div>
+          <div class="uploading-hint">系統正在讀取紙條上的文字...</div>
+        </div>
+      </div>
+      
+      <!-- 狀態 4: 完成 -->
+      <div id="state-done" class="hidden">
+        <div class="done">
+          <div class="done-icon">✓</div>
+          <h2 class="done-title">完 成</h2>
+          <p class="done-msg">資料已成功寫入訂單系統</p>
+          
+          <div class="done-detail" id="doneDetail">
+            <!-- JS 動態填入辨識結果 -->
+          </div>
+          
+          <button class="btn btn-primary" style="width:100%" onclick="resetApp()">
+            繼 續 拍 下 一 張
+          </button>
+        </div>
+      </div>
+      
+      <!-- 錯誤狀態 -->
+      <div id="state-error" class="hidden">
+        <div class="error">
+          <div class="error-title">⚠️ 出問題了</div>
+          <div class="error-msg" id="errorMsg"></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-secondary" onclick="resetApp()">重 拍</button>
+          <button class="btn btn-primary" onclick="uploadPhoto()">再 試</button>
+        </div>
+      </div>
+      
+    </div>
+    
+    <div class="footer">A H U I  ·  v 1 . 0</div>
+  </div>
+  
+  <!-- 設定彈窗 -->
+  <div id="settingsModal" class="modal-bg hidden">
+    <div class="modal">
+      <h2>⚙️ 系統設定</h2>
+      <p>第一次使用時,請設定以下兩個連結。設定一次,以後不用再動。</p>
+      
+      <label>Gemini API 金鑰</label>
+      <input type="text" id="apiKey" placeholder="貼上你的 Gemini API Key">
+      
+      <label>Google Sheets Webhook 網址</label>
+      <input type="text" id="webhookUrl" placeholder="貼上 Apps Script 部署的網址">
+      
+      <label>Webhook 密碼 (跟 Apps Script 一致)</label>
+      <input type="text" id="webhookKey" placeholder="自訂的隨機字串">
+      
+      <div class="modal-btns">
+        <button class="btn btn-secondary" onclick="closeSettings()">取 消</button>
+        <button class="btn btn-primary" onclick="saveSettings()">儲 存</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+// ============== 設定管理 ==============
+// 注意: localStorage 只能在阿輝師自己的手機上儲存,不會跑到雲端
+function getConfig() {
+  return {
+    apiKey: localStorage.getItem('apiKey') || '',
+    webhookUrl: localStorage.getItem('webhookUrl') || '',
+    webhookKey: localStorage.getItem('webhookKey') || ''
+  };
+}
+
+function openSettings() {
+  const c = getConfig();
+  document.getElementById('apiKey').value = c.apiKey;
+  document.getElementById('webhookUrl').value = c.webhookUrl;
+  document.getElementById('webhookKey').value = c.webhookKey;
+  document.getElementById('settingsModal').classList.remove('hidden');
+}
+
+function closeSettings() {
+  document.getElementById('settingsModal').classList.add('hidden');
+}
+
+function saveSettings() {
+  localStorage.setItem('apiKey', document.getElementById('apiKey').value.trim());
+  localStorage.setItem('webhookUrl', document.getElementById('webhookUrl').value.trim());
+  localStorage.setItem('webhookKey', document.getElementById('webhookKey').value.trim());
+  closeSettings();
+  alert('✅ 設定已儲存');
+}
+
+// ============== 主流程 ==============
+let currentPhotoBase64 = null;
+
+function showState(name) {
+  ['idle', 'preview', 'uploading', 'done', 'error'].forEach(s => {
+    document.getElementById('state-' + s).classList.add('hidden');
+  });
+  document.getElementById('state-' + name).classList.remove('hidden');
+}
+
+function resetApp() {
+  currentPhotoBase64 = null;
+  document.getElementById('fileInput').value = '';
+  showState('idle');
+}
+
+function showError(msg) {
+  document.getElementById('errorMsg').textContent = msg;
+  showState('error');
+}
+
+// 處理拍到的照片
+function handleFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  // 壓縮圖片 (避免上傳太大,Gemini 也會比較快)
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const maxSize = 1600;
+      let { width, height } = img;
+      if (width > maxSize || height > maxSize) {
+        const ratio = Math.min(maxSize / width, maxSize / height);
+        width *= ratio;
+        height *= ratio;
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      const compressed = canvas.toDataURL('image/jpeg', 0.85);
+      currentPhotoBase64 = compressed.split(',')[1];
+      
+      document.getElementById('previewImg').src = compressed;
+      showState('preview');
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// 上傳: 先 Gemini 辨識 → 再寫入 Sheets
+async function uploadPhoto() {
+  const config = getConfig();
+  
+  if (!config.apiKey || !config.webhookUrl) {
+    showError('還沒設定 API Key 或 Webhook,請點右上角 ⚙️ 設定');
+    return;
+  }
+  
+  if (!currentPhotoBase64) {
+    showError('沒有照片可上傳');
+    return;
+  }
+  
+  showState('uploading');
+  
+  try {
+    // Step 1: 用 Gemini 辨識
+    const recognized = await callGemini(currentPhotoBase64, config.apiKey);
+    
+    // Step 2: 寫入 Google Sheets
+    await writeToSheets(recognized, config.webhookUrl, config.webhookKey);
+    
+    // 顯示完成
+    showDone(recognized);
+    
+  } catch (err) {
+    console.error(err);
+    showError(err.message || '不明錯誤');
+  }
+}
+
+// 呼叫 Gemini Vision API
+async function callGemini(base64Image, apiKey) {
+  const prompt = `你是台灣木雕師「阿輝師」(柏輝木品)的訂單辨識助手。他做的是【文昌筆】(木製毛筆藝品),不是神像也不是佛像。
+
+請仔細看這張紙條照片,辨識出以下欄位的內容,輸出 JSON 格式 (只輸出 JSON,不要其他文字):
+
+{
+  "客戶姓名": "(中文姓名,沒有就空字串)",
+  "聯絡電話": "(數字,沒有就空字串)",
+  "登記日期": "(YYYY-MM-DD 格式,沒有寫就用今天)",
+  "木種": "(例如:紅檀、檜木、樟木、黑檀)",
+  "款式": "(筆頭結構樣式,例如:龍頭、尖頭、雕花、客製款)",
+  "數量": "(數字,可能一次多支)",
+  "單價": "(每支單價,純數字,沒有就空字串)",
+  "噴漆種類": "(例如:透明漆、亮光漆)",
+  "噴漆廠": "(廠商名稱)",
+  "預計交期": "(YYYY-MM-DD,沒有就空字串)",
+  "備註": "(其他資訊例如特殊要求,合在一起)"
+}
+
+注意事項:
+- 阿輝師做的是文昌筆,不是神像。請不要自己想成佛像
+- 阿輝師的字可能潦草,請盡量推測
+- 客戶可能一次訂多支,數量請忠實辨識
+- 找不到的欄位,值給空字串 ""
+- 數量、單價請給純數字
+- 不要自己編造,辨識不出來就空白
+- 只輸出 JSON,不要 markdown 代碼框,不要解釋`;
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{
+        parts: [
+          { text: prompt },
+          {
+            inline_data: {
+              mime_type: 'image/jpeg',
+              data: base64Image
+            }
+          }
+        ]
+      }],
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: 1024
+      }
+    })
+  });
+  
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Gemini 辨識失敗: ${response.status} - ${err.slice(0, 100)}`);
+  }
+  
+  const data = await response.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  
+  // 清掉可能的 markdown 框
+  const cleaned = text.replace(/```json\s*/g, '').replace(/```\s*$/g, '').trim();
+  
+  try {
+    return JSON.parse(cleaned);
+  } catch (e) {
+    throw new Error('辨識結果無法解析,請重拍清楚一點');
+  }
+}
+
+// 寫入 Google Sheets (透過 Apps Script Webhook)
+async function writeToSheets(data, webhookUrl, webhookKey) {
+  const response = await fetch(webhookUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({
+      apiKey: webhookKey,
+      data: data
+    })
+  });
+  
+  if (!response.ok) {
+    throw new Error(`寫入 Sheets 失敗: ${response.status}`);
+  }
+  
+  const result = await response.json();
+  if (!result.success) {
+    throw new Error(result.error || '寫入失敗');
+  }
+  
+  return result;
+}
+
+// 顯示完成 (給阿輝師看辨識到什麼)
+function showDone(data) {
+  const detail = document.getElementById('doneDetail');
+  const fields = [
+    ['👤 客戶', data['客戶姓名']],
+    ['📞 電話', data['聯絡電話']],
+    ['🪵 木種', data['木種']],
+    ['🖌️ 款式', data['款式']],
+    ['🔢 數量', data['數量']],
+    ['💰 單價', data['單價']],
+    ['🎨 噴漆', data['噴漆種類']],
+    ['📅 交期', data['預計交期']]
+  ];
+  
+  detail.innerHTML = fields
+    .filter(([, v]) => v)
+    .map(([k, v]) => `<div><strong>${k}:</strong> ${v}</div>`)
+    .join('');
+  
+  if (!detail.innerHTML) {
+    detail.innerHTML = '<div style="color:#D97706">⚠️ 辨識結果有點少,請到電腦上的 Google Sheets 確認</div>';
+  }
+  
+  showState('done');
+}
+
+// 第一次打開,如果沒設定 → 自動跳出設定
+window.addEventListener('load', () => {
+  const c = getConfig();
+  if (!c.apiKey || !c.webhookUrl) {
+    setTimeout(openSettings, 500);
+  }
+});
+
+// PWA: 註冊 Service Worker (簡化版,不快取邏輯,純為了能裝到主畫面)
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('data:application/javascript;base64,c2VsZi5hZGRFdmVudExpc3RlbmVyKCdmZXRjaCcsIGUgPT4ge30pOw==')
+    .catch(() => {}); // 失敗不影響主功能
+}
+</script>
+</body>
+</html>
