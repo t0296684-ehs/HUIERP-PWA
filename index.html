@@ -331,10 +331,8 @@
     <p>設定一次即可，存在這支手機上。Jason 第一次幫你設定好，以後不用動。</p>
     <label>Gemini API 金鑰</label>
     <input type="text" id="inputApiKey" placeholder="AIza...">
-    <label>Webhook 網址（Google Sheets）</label>
-    <input type="text" id="inputWebhookUrl" placeholder="https://script.google.com/...">
     <label>Webhook 密碼</label>
-    <input type="password" id="inputWebhookKey" placeholder="自訂密碼">
+    <input type="password" id="inputWebhookKey" placeholder="向 Jason 取得">
     <button class="btn btn-primary save-btn" onclick="saveSettings()">儲 存 設 定</button>
   </div>
 </div>
@@ -345,10 +343,13 @@
 
 <script>
 // ── 設定（localStorage，不放 repo） ──
+// ── 設定（localStorage，webhookUrl 內建） ──
+const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbzTIPZZU09CC0qlVMIqTC5D-MZu6xvjDayYgIvSojnLpWUWuUY/exec';
+
 function getConfig() {
   return {
     apiKey:     localStorage.getItem('ahui_apiKey')     || '',
-    webhookUrl: localStorage.getItem('ahui_webhookUrl') || '',
+    webhookUrl: WEBHOOK_URL,
     webhookKey: localStorage.getItem('ahui_webhookKey') || ''
   };
 }
@@ -356,7 +357,6 @@ function getConfig() {
 function openSettings() {
   const c = getConfig();
   document.getElementById('inputApiKey').value     = c.apiKey;
-  document.getElementById('inputWebhookUrl').value = c.webhookUrl;
   document.getElementById('inputWebhookKey').value = c.webhookKey;
   document.getElementById('settingsOverlay').classList.remove('hidden');
 }
@@ -371,14 +371,12 @@ function handleOverlayClick(e) {
 
 function saveSettings() {
   const apiKey     = document.getElementById('inputApiKey').value.trim();
-  const webhookUrl = document.getElementById('inputWebhookUrl').value.trim();
   const webhookKey = document.getElementById('inputWebhookKey').value.trim();
-  if (!apiKey || !webhookUrl || !webhookKey) {
-    alert('請填寫全部三個欄位');
+  if (!apiKey || !webhookKey) {
+    alert('請填寫 API 金鑰和 Webhook 密碼');
     return;
   }
   localStorage.setItem('ahui_apiKey',     apiKey);
-  localStorage.setItem('ahui_webhookUrl', webhookUrl);
   localStorage.setItem('ahui_webhookKey', webhookKey);
   closeSettings();
   alert('✅ 設定已儲存');
@@ -387,7 +385,7 @@ function saveSettings() {
 // 第一次打開若無設定，自動跳出
 window.addEventListener('load', () => {
   const c = getConfig();
-  if (!c.apiKey || !c.webhookUrl || !c.webhookKey) {
+  if (!c.apiKey || !c.webhookKey) {
     setTimeout(openSettings, 600);
   }
 });
@@ -546,7 +544,7 @@ function showBatchSection(name) {
 
 async function startBatchUpload() {
   const c = getConfig();
-  if (!c.apiKey || !c.webhookUrl) { openSettings(); return; }
+  if (!c.apiKey || !c.webhookKey) { openSettings(); return; }
   batchQueue = []; batchResults = {success:0, fail:0, errors:[]};
   const total = batchFiles.length;
   showBatchSection('recognizing');
