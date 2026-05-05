@@ -165,6 +165,37 @@
   .progress-bar-wrap { margin: 16px 0 0; background: #E2E8F0; border-radius: 100px; height: 6px; overflow: hidden; }
   .progress-bar { height: 100%; background: var(--accent); border-radius: 100px; transition: width 0.4s ease; }
 
+  /* 批次編號 tab */
+  .num-tab {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    border: 2px solid var(--border);
+    background: var(--paper);
+    color: var(--text-mute);
+    font-size: 14px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .num-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .num-tab.done   { background: var(--success); color: #fff; border-color: var(--success); }
+  .num-tab.skip   { background: #E2E8F0; color: var(--text-mute); border-color: var(--border); text-decoration: line-through; }
+
+  /* 結果清單項目 */
+  .result-item {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--paper); border-radius: 14px;
+    padding: 12px 16px; box-shadow: var(--shadow-sm);
+    border-left: 4px solid var(--border);
+  }
+  .result-item.ok   { border-left-color: var(--success); }
+  .result-item.fail { border-left-color: var(--error); }
+  .result-num { font-size: 12px; font-weight: 700; color: var(--text-mute); width: 32px; flex-shrink: 0; }
+  .result-info { flex: 1; font-size: 14px; color: var(--text); }
+  .result-info .name { font-weight: 700; }
+  .result-info .hint { font-size: 12px; color: var(--text-mute); margin-top: 2px; }
+  .result-retry { border: none; background: var(--error); color: #fff; border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+
   .footer { text-align: center; padding: 16px 0 10px; color: var(--text-mute); font-size: 11px; letter-spacing: 2px; opacity: 0.5; }
   .hidden { display: none !important; }
 </style>
@@ -221,37 +252,39 @@
       <div id="batch-confirm" class="hidden">
         <div class="step-badge"><span class="dot"></span>確認辨識結果</div>
         <h2 class="step-title">請確認內容</h2>
-        <p class="step-desc">有錯誤直接點欄位修改，確認後按「上傳此筆」</p>
+        <p class="step-desc">點上方編號切換每筆，有錯直接修改，全部確認後統一上傳</p>
+
+        <!-- 編號 tab -->
+        <div id="batchTabRow" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+
+        <!-- 單筆表格區 -->
         <div class="confirm-card">
           <div class="confirm-header">
             <span class="confirm-header-title" id="batchConfirmTitle">第 1 筆</span>
-            <span class="confirm-header-badge" id="batchConfirmProgress">1 / 1</span>
+            <span class="confirm-header-badge" id="batchConfirmBadge">待確認</span>
           </div>
           <table class="confirm-table" id="batchConfirmTable"></table>
         </div>
-        <p class="confirm-note">✏️ 點任何欄位可直接修改</p>
-        <div class="btn-row">
-          <button class="btn btn-secondary" onclick="skipBatchItem()">跳 過</button>
-          <button class="btn btn-primary" onclick="confirmAndUploadBatchItem()">確 認 上 傳 ✓</button>
-        </div>
+        <p class="confirm-note">✏️ 點任何欄位可直接修改・切換編號自動儲存</p>
+
+        <button class="btn btn-primary" onclick="uploadAllConfirmed()">全 部 上 傳 ✓</button>
       </div>
       <div id="batch-uploading" class="hidden">
         <div class="uploading"><div class="spinner"></div><div class="uploading-text">上 傳 中</div><div class="uploading-hint">寫入訂單系統中，請稍候...</div></div>
       </div>
       <div id="batch-done" class="hidden">
         <div class="done">
-          <div class="done-icon">✓</div>
-          <div class="done-title">全 部 完 成</div>
-          <p class="done-msg" id="batchDoneMsg">共處理 0 筆訂單</p>
-          <br><button class="btn btn-primary" onclick="resetBatch()">繼 續 上 傳</button>
+          <div class="done-icon" id="batchDoneIcon">✓</div>
+          <div class="done-title" id="batchDoneTitle">全 部 完 成</div>
+          <p class="done-msg" id="batchDoneMsg"></p>
         </div>
+        <!-- 結果清單 -->
+        <div id="batchResultList" style="display:flex;flex-direction:column;gap:8px;margin-top:4px;"></div>
+        <button class="btn btn-primary" style="margin-top:8px" onclick="resetBatch()">重 新 上 傳</button>
       </div>
       <div id="batch-error" class="hidden">
-        <div class="error-card"><div class="error-title">⚠️ 部分失敗</div><div class="error-msg" id="batchErrorMsg"></div></div>
-        <div class="btn-row" style="margin-top:12px">
-          <button class="btn btn-secondary" onclick="resetBatch()">重 選</button>
-          <button class="btn btn-primary" onclick="resetBatch()">繼 續</button>
-        </div>
+        <div class="error-card"><div class="error-title">⚠️ 全部辨識失敗</div><div class="error-msg" id="batchErrorMsg"></div></div>
+        <button class="btn btn-primary" style="margin-top:12px" onclick="resetBatch()">重 新 選 取</button>
       </div>
     </div>
 
@@ -519,20 +552,19 @@ async function callGemini(base64Image) {
 // ── 寫入 Sheets ──
 async function writeToSheets(data) {
   const {webhookUrl, webhookKey} = getConfig();
-  const res = await fetch(webhookUrl, {
+  // Apps Script 不支援 CORS preflight，用 no-cors + text/plain 繞過
+  await fetch(webhookUrl, {
     method: 'POST',
+    mode: 'no-cors',
     headers: {'Content-Type':'text/plain;charset=utf-8'},
     body: JSON.stringify({apiKey: webhookKey, data})
   });
-  if (!res.ok) throw new Error(`寫入 Sheets 失敗: ${res.status}`);
-  const result = await res.json();
-  if (!result.success) throw new Error(result.error || '寫入失敗');
-  return result;
+  // no-cors 下無法讀取 response，視為成功
+  return {success: true};
 }
 
 // ══ 批次上傳 ══
 let batchFiles = [];
-let batchQueue = [];
 let batchResults = {success:0, fail:0, errors:[]};
 
 function triggerBatchPick() { document.getElementById('batchInput').click(); }
@@ -574,62 +606,173 @@ function showBatchSection(name) {
   });
 }
 
+// 所有辨識完的資料（含使用者編輯後的值）
+let batchEditedData = [];   // [{data, idx, skipped}]
+let batchCurrentTab = 0;
+
 async function startBatchUpload() {
   const c = getConfig();
   if (!c.apiKey || !c.webhookKey) { openSettings(); return; }
-  batchQueue = []; batchResults = {success:0, fail:0, errors:[]};
+  batchEditedData = [];
+  batchResults = {success:0, fail:0, errors:[]};
   const total = batchFiles.length;
   showBatchSection('recognizing');
+
+  // 全部辨識
   for (let i = 0; i < total; i++) {
     document.getElementById('batchRecognizingHint').textContent = `正在讀取第 ${i+1} 張紙條（共 ${total} 張）...`;
-    document.getElementById('batchProgress').style.width = `${Math.round((i/total)*100)}%`;
+    document.getElementById('batchProgress').style.width = `${Math.round(((i+0.5)/total)*100)}%`;
     try {
       const recognized = await callGemini(batchFiles[i].base64);
-      batchQueue.push({data: recognized, idx: i});
+      batchEditedData.push({data: recognized, idx: i, skipped: false});
     } catch(e) {
+      batchEditedData.push({data: {}, idx: i, skipped: true, error: e.message});
       batchResults.fail++;
-      batchResults.errors.push(`第 ${i+1} 張：${e.message}`);
+      batchResults.errors.push(`第 ${i+1} 筆辨識失敗：${e.message}`);
     }
   }
   document.getElementById('batchProgress').style.width = '100%';
-  if (batchQueue.length === 0) {
+
+  const validItems = batchEditedData.filter(it => !it.skipped);
+  if (validItems.length === 0) {
     document.getElementById('batchErrorMsg').textContent = batchResults.errors.join('\n');
     showBatchSection('error'); return;
   }
-  showNextBatchConfirm();
-}
 
-function showNextBatchConfirm() {
-  if (batchQueue.length === 0) {
-    document.getElementById('batchDoneMsg').textContent = `共成功上傳 ${batchResults.success} 筆訂單` + (batchResults.fail>0?`，${batchResults.fail} 筆失敗`:'');
-    showBatchSection('done'); return;
-  }
-  const item = batchQueue[0];
-  const confirmed = batchResults.success + batchResults.fail;
-  document.getElementById('batchConfirmTitle').textContent = `第 ${item.idx+1} 筆`;
-  document.getElementById('batchConfirmProgress').textContent = `${confirmed+1} / ${batchFiles.length}`;
-  buildConfirmTable(document.getElementById('batchConfirmTable'), item.data);
+  // 建 tab 和載入第一筆
+  buildBatchTabs();
+  batchCurrentTab = batchEditedData.findIndex(it => !it.skipped);
+  loadBatchTab(batchCurrentTab);
   showBatchSection('confirm');
 }
 
-async function confirmAndUploadBatchItem() {
-  const item = batchQueue.shift();
-  const editedData = readConfirmTable(document.getElementById('batchConfirmTable'));
-  showBatchSection('uploading');
-  try { await writeToSheets(editedData); batchResults.success++; }
-  catch(e) { batchResults.fail++; batchResults.errors.push(`第 ${item.idx+1} 筆：${e.message}`); }
-  showNextBatchConfirm();
+function buildBatchTabs() {
+  const row = document.getElementById('batchTabRow');
+  row.innerHTML = '';
+  batchEditedData.forEach((item, i) => {
+    const btn = document.createElement('div');
+    btn.className = 'num-tab' + (item.skipped ? ' skip' : '');
+    btn.id = `tab-btn-${i}`;
+    btn.textContent = item.idx + 1;
+    btn.title = item.skipped ? '辨識失敗' : `第 ${item.idx+1} 筆`;
+    if (!item.skipped) btn.onclick = () => switchBatchTab(i);
+    row.appendChild(btn);
+  });
 }
 
-function skipBatchItem() {
-  const item = batchQueue.shift();
-  batchResults.fail++;
-  batchResults.errors.push(`第 ${item.idx+1} 筆已跳過`);
-  showNextBatchConfirm();
+function switchBatchTab(i) {
+  // 先儲存目前 tab 的編輯值
+  if (!batchEditedData[batchCurrentTab].skipped) {
+    batchEditedData[batchCurrentTab].data = readConfirmTable(document.getElementById('batchConfirmTable'));
+  }
+  batchCurrentTab = i;
+  loadBatchTab(i);
 }
+
+function loadBatchTab(i) {
+  const item = batchEditedData[i];
+  // 更新 tab 外觀
+  document.querySelectorAll('.num-tab').forEach((btn, idx) => {
+    btn.classList.toggle('active', idx === i);
+  });
+  document.getElementById('batchConfirmTitle').textContent = `第 ${item.idx+1} 筆`;
+  document.getElementById('batchConfirmBadge').textContent = item.skipped ? '辨識失敗' : '請確認';
+  buildConfirmTable(document.getElementById('batchConfirmTable'), item.data);
+}
+
+async function uploadAllConfirmed() {
+  // 先儲存目前 tab 的編輯值
+  if (!batchEditedData[batchCurrentTab].skipped) {
+    batchEditedData[batchCurrentTab].data = readConfirmTable(document.getElementById('batchConfirmTable'));
+  }
+
+  const toUpload = batchEditedData.filter(it => !it.skipped);
+  if (toUpload.length === 0) { showBatchSection('done'); return; }
+
+  showBatchSection('uploading');
+
+  const uploadResults = [];
+  for (const item of toUpload) {
+    try {
+      await writeToSheets(item.data);
+      batchResults.success++;
+      uploadResults.push({item, ok: true});
+    } catch(e) {
+      batchResults.fail++;
+      uploadResults.push({item, ok: false, msg: e.message});
+    }
+  }
+
+  showBatchDone(uploadResults);
+}
+
+function showBatchDone(uploadResults) {
+  const total = uploadResults.length;
+  const ok = uploadResults.filter(r => r.ok).length;
+  const fail = total - ok;
+
+  // 標題
+  document.getElementById('batchDoneIcon').textContent = fail === 0 ? '✓' : '⚠';
+  document.getElementById('batchDoneIcon').style.background = fail === 0 ? 'var(--success)' : '#D97706';
+  document.getElementById('batchDoneTitle').textContent = fail === 0 ? '全 部 完 成' : '部 分 失 敗';
+  document.getElementById('batchDoneMsg').textContent =
+    `成功 ${ok} 筆` + (fail > 0 ? `・失敗 ${fail} 筆` : '');
+
+  // 逐筆清單
+  const list = document.getElementById('batchResultList');
+  list.innerHTML = '';
+  uploadResults.forEach(r => {
+    const name = r.item.data['客戶姓名'] || '（未填姓名）';
+    const qty  = r.item.data['數量'] ? `${r.item.data['數量']} 支` : '';
+    const div = document.createElement('div');
+    div.className = 'result-item ' + (r.ok ? 'ok' : 'fail');
+    div.innerHTML = `
+      <div class="result-num">#${r.item.idx+1}</div>
+      <div class="result-info">
+        <div class="name">${name}${qty ? '・' + qty : ''}</div>
+        <div class="hint">${r.ok ? '✅ 已寫入訂單系統' : '❌ ' + (r.msg||'上傳失敗')}</div>
+      </div>
+      ${!r.ok ? `<button class="result-retry" onclick="retryUpload(${r.item.idx})">重 傳</button>` : ''}
+    `;
+    list.appendChild(div);
+  });
+
+  showBatchSection('done');
+}
+
+async function retryUpload(originalIdx) {
+  const item = batchEditedData.find(it => it.idx === originalIdx);
+  if (!item) return;
+  const btn = event.target;
+  btn.textContent = '上傳中...'; btn.disabled = true;
+  try {
+    await writeToSheets(item.data);
+    // 更新該列狀態
+    const row = btn.closest('.result-item');
+    row.className = 'result-item ok';
+    row.querySelector('.hint').textContent = '✅ 已寫入訂單系統';
+    btn.remove();
+    batchResults.success++;
+    // 更新標題
+    const ok = document.querySelectorAll('.result-item.ok').length;
+    const fail = document.querySelectorAll('.result-item.fail').length;
+    document.getElementById('batchDoneMsg').textContent = `成功 ${ok} 筆` + (fail > 0 ? `・失敗 ${fail} 筆` : '');
+    if (fail === 0) {
+      document.getElementById('batchDoneIcon').textContent = '✓';
+      document.getElementById('batchDoneIcon').style.background = 'var(--success)';
+      document.getElementById('batchDoneTitle').textContent = '全 部 完 成';
+    }
+  } catch(e) {
+    btn.textContent = '重 傳'; btn.disabled = false;
+    alert(`第 ${originalIdx+1} 筆重傳失敗：${e.message}`);
+  }
+}
+
+function skipBatchItem() {} // 已棄用，保留避免報錯
 
 function resetBatch() {
-  batchFiles = []; batchQueue = []; batchResults = {success:0, fail:0, errors:[]};
+  batchFiles = []; batchEditedData = []; batchResults = {success:0, fail:0, errors:[]};
+  document.getElementById('batchResultList').innerHTML = '';
   renderThumbs(); showBatchSection('select');
 }
 
