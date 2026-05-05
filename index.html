@@ -522,22 +522,40 @@ function closeSheets() {
 async function uploadCurrentOnly() {
   closeSheets();
   const item = batchEditedData[batchCurrentTab];
-  if (!item || item.skipped) return;
+  if (!item || item.skipped || item.uploaded) {
+    alert('此筆已上傳或已跳過');
+    showBatchSection('confirm');
+    return;
+  }
   const data = readConfirmTable(document.getElementById('batchConfirmTable'));
+  item.data = data; // 儲存編輯值
   showBatchSection('uploading');
   try {
     await writeToSheets(data);
     item.uploaded = true;
     batchResults.success++;
-    const tabBtn = document.getElementById(`tab-btn-${batchCurrentTab}`);
-    if (tabBtn) { tabBtn.classList.remove('active'); tabBtn.classList.add('done'); }
   } catch(e) {
     batchResults.fail++;
+    buildBatchTabs();
+    loadBatchTab(batchCurrentTab);
+    showBatchSection('confirm');
     alert(`上傳失敗：${e.message}`);
+    return;
   }
   buildBatchTabs();
-  loadBatchTab(batchCurrentTab);
-  showBatchSection('confirm');
+  // 自動跳到下一筆未上傳的
+  const next = batchEditedData.find(it => !it.skipped && !it.uploaded);
+  if (next) {
+    batchCurrentTab = next.idx;
+    loadBatchTab(batchCurrentTab);
+    showBatchSection('confirm');
+  } else {
+    // 全部處理完，顯示結果
+    const results = batchEditedData
+      .filter(it => it.uploaded || (it.skipped && !it.error))
+      .map(it => ({item: it, ok: !!it.uploaded}));
+    showBatchDone(batchEditedData.map(it => ({item: it, ok: !!it.uploaded})).filter(r => !r.item.error || r.ok));
+  }
 }
 
 function cancelCurrentOnly() {
@@ -795,9 +813,10 @@ async function startBatchUpload() {
     showBatchSection('error'); return;
   }
 
-  // 建 tab 和載入第一筆
+  // 建 tab 和載入第一筆（用陣列 index，不是 idx）
   buildBatchTabs();
   batchCurrentTab = batchEditedData.findIndex(it => !it.skipped);
+  if (batchCurrentTab === -1) batchCurrentTab = 0;
   loadBatchTab(batchCurrentTab);
   showBatchSection('confirm');
 }
@@ -805,34 +824,39 @@ async function startBatchUpload() {
 function buildBatchTabs() {
   const row = document.getElementById('batchTabRow');
   row.innerHTML = '';
-  batchEditedData.forEach((item, i) => {
+  batchEditedData.forEach((item, arrIdx) => {
     const btn = document.createElement('div');
-    btn.className = 'num-tab' + (item.skipped ? ' skip' : '');
-    btn.id = `tab-btn-${i}`;
+    let cls = 'num-tab';
+    if (item.uploaded) cls += ' done';
+    else if (item.skipped) cls += ' skip';
+    else if (arrIdx === batchCurrentTab) cls += ' active';
+    btn.className = cls;
+    btn.id = `tab-btn-${arrIdx}`;
     btn.textContent = item.idx + 1;
-    btn.title = item.skipped ? '辨識失敗' : `第 ${item.idx+1} 筆`;
-    if (!item.skipped) btn.onclick = () => switchBatchTab(i);
+    btn.title = item.uploaded ? '已上傳' : item.skipped ? '已跳過/辨識失敗' : `第 ${item.idx+1} 筆`;
+    if (!item.skipped && !item.uploaded) btn.onclick = () => switchBatchTab(arrIdx);
     row.appendChild(btn);
   });
 }
 
-function switchBatchTab(i) {
+function switchBatchTab(arrIdx) {
   // 先儲存目前 tab 的編輯值
-  if (!batchEditedData[batchCurrentTab].skipped) {
+  if (batchEditedData[batchCurrentTab] && !batchEditedData[batchCurrentTab].skipped && !batchEditedData[batchCurrentTab].uploaded) {
     batchEditedData[batchCurrentTab].data = readConfirmTable(document.getElementById('batchConfirmTable'));
   }
-  batchCurrentTab = i;
-  loadBatchTab(i);
+  batchCurrentTab = arrIdx;
+  loadBatchTab(arrIdx);
 }
 
-function loadBatchTab(i) {
-  const item = batchEditedData[i];
-  // 更新 tab 外觀
-  document.querySelectorAll('.num-tab').forEach((btn, idx) => {
-    btn.classList.toggle('active', idx === i);
+function loadBatchTab(arrIdx) {
+  const item = batchEditedData[arrIdx];
+  if (!item) return;
+  document.querySelectorAll('.num-tab').forEach((btn, i) => {
+    btn.classList.toggle('active', i === arrIdx && !item.uploaded && !item.skipped);
   });
   document.getElementById('batchConfirmTitle').textContent = `第 ${item.idx+1} 筆`;
-  document.getElementById('batchConfirmBadge').textContent = item.skipped ? '辨識失敗' : '請確認';
+  document.getElementById('batchConfirmBadge').textContent =
+    item.uploaded ? '已上傳' : item.skipped ? '辨識失敗' : '請確認';
   buildConfirmTable(document.getElementById('batchConfirmTable'), item.data);
 }
 
