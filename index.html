@@ -495,15 +495,25 @@ async function callGemini(base64Image) {
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify({
       contents: [{parts: [{text: GEMINI_PROMPT},{inline_data:{mime_type:'image/jpeg',data:base64Image}}]}],
-      generationConfig: {temperature: 0.1, maxOutputTokens: 1024}
+      generationConfig: {temperature: 0.1, maxOutputTokens: 1024, thinkingConfig: {thinkingBudget: 0}}
     })
   });
   if (!res.ok) throw new Error(`Gemini 辨識失敗: ${res.status}`);
   const data = await res.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  const cleaned = text.replace(/```json\s*/g,'').replace(/```\s*$/g,'').trim();
-  try { return JSON.parse(cleaned); }
-  catch { throw new Error('辨識結果無法解析，請重拍清楚一點'); }
+
+  // 2.5-flash 有思考功能，parts 可能有多個，取所有 text 合併
+  const parts = data.candidates?.[0]?.content?.parts || [];
+  const fullText = parts.map(p => p.text || '').join('');
+
+  // 先去掉 markdown 代碼框
+  let cleaned = fullText.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+
+  // 從任意格式裡抽出第一個完整的 {...} JSON 物件
+  const match = cleaned.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error('AI 無法辨識此圖片，請確認照片清晰');
+
+  try { return JSON.parse(match[0]); }
+  catch { throw new Error('辨識結果格式異常，請再試一次'); }
 }
 
 // ── 寫入 Sheets ──
