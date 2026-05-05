@@ -552,15 +552,17 @@ async function callGemini(base64Image) {
 // ── 寫入 Sheets ──
 async function writeToSheets(data) {
   const {webhookUrl, webhookKey} = getConfig();
-  // Apps Script 不支援 CORS preflight，用 no-cors + text/plain 繞過
-  await fetch(webhookUrl, {
+  const res = await fetch(webhookUrl, {
     method: 'POST',
-    mode: 'no-cors',
-    headers: {'Content-Type':'text/plain;charset=utf-8'},
+    headers: {'Content-Type': 'text/plain;charset=utf-8'},
     body: JSON.stringify({apiKey: webhookKey, data})
   });
-  // no-cors 下無法讀取 response，視為成功
-  return {success: true};
+  // Apps Script 部署為「任何人可存取」時會自動處理 CORS
+  // 若仍有 CORS 問題代表部署設定不正確
+  if (!res.ok) throw new Error(`寫入失敗: HTTP ${res.status}`);
+  const result = await res.json();
+  if (!result.success) throw new Error(result.error || '寫入失敗');
+  return result;
 }
 
 // ══ 批次上傳 ══
