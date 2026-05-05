@@ -1,39 +1,37 @@
-// 柏輝木品 中繼 API - 轉發請求到 Apps Script
-// 部署到 Vercel，解決 Apps Script CORS 問題
+// 柏輝木品 中繼 API v2 - 轉發請求到 Apps Script
 
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzTIPZZU09CC0qlVMIqTC5D-MZu6xvjDayYgIvSojnLpWUWuUY/exec';
 
 export default async function handler(req, res) {
-  // 設定 CORS header，允許任何來源
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  // 處理 preflight
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ success: false, error: 'Method not allowed' });
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Method not allowed' });
 
   try {
-    // 轉發到 Apps Script（用 POST + text/plain 避免 preflight）
+    // 讀取原始 body（不依賴自動 parse，確保內容完整）
+    const rawBody = await new Promise((resolve, reject) => {
+      let data = '';
+      req.on('data', chunk => data += chunk);
+      req.on('end', () => resolve(data));
+      req.on('error', reject);
+    });
+
+    // 轉發到 Apps Script
     const response = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(req.body),
+      body: rawBody,
       redirect: 'follow'
     });
 
     const text = await response.text();
 
     try {
-      const json = JSON.parse(text);
-      return res.status(200).json(json);
+      return res.status(200).json(JSON.parse(text));
     } catch {
-      // Apps Script 回傳非 JSON，視為成功
       return res.status(200).json({ success: true, raw: text.substring(0, 200) });
     }
 
