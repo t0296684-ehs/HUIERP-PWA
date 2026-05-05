@@ -374,10 +374,28 @@
     <button class="close-btn" onclick="closeSettings()">✕</button>
     <h2>⚙️ 系統設定</h2>
     <p>設定一次即可，存在這支手機上。Jason 第一次幫你設定好，以後不用動。</p>
+
     <label>Gemini API 金鑰</label>
     <input type="text" id="inputApiKey" placeholder="AIza...">
+
     <label>Webhook 密碼</label>
     <input type="password" id="inputWebhookKey" placeholder="向 Jason 取得">
+
+    <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border)">
+      <div style="font-size:14px;font-weight:700;color:var(--primary);letter-spacing:2px;margin-bottom:6px">📧 每月訂單報告</div>
+      <div style="font-size:12px;color:var(--text-mute);margin-bottom:14px;line-height:1.6">每月 1 號自動寄出上月訂單彙整，最多 5 位收件人</div>
+      <label>收件人 1</label>
+      <input type="email" id="reportEmail1" placeholder="example@gmail.com">
+      <label>收件人 2</label>
+      <input type="email" id="reportEmail2" placeholder="（選填）">
+      <label>收件人 3</label>
+      <input type="email" id="reportEmail3" placeholder="（選填）">
+      <label>收件人 4</label>
+      <input type="email" id="reportEmail4" placeholder="（選填）">
+      <label>收件人 5</label>
+      <input type="email" id="reportEmail5" placeholder="（選填）">
+    </div>
+
     <button class="btn btn-primary save-btn" onclick="saveSettings()">儲 存 設 定</button>
   </div>
 </div>
@@ -423,6 +441,11 @@ function openSettings() {
   const c = getConfig();
   document.getElementById('inputApiKey').value     = c.apiKey;
   document.getElementById('inputWebhookKey').value = c.webhookKey;
+  // 載入報告收件人
+  for (let i = 1; i <= 5; i++) {
+    const el = document.getElementById(`reportEmail${i}`);
+    if (el) el.value = localStorage.getItem(`ahui_reportEmail${i}`) || '';
+  }
   document.getElementById('settingsOverlay').classList.remove('hidden');
 }
 
@@ -443,6 +466,29 @@ function saveSettings() {
   }
   localStorage.setItem('ahui_apiKey',     apiKey);
   localStorage.setItem('ahui_webhookKey', webhookKey);
+
+  // 儲存報告收件人，並收集非空的 email
+  const emails = [];
+  for (let i = 1; i <= 5; i++) {
+    const val = (document.getElementById(`reportEmail${i}`)?.value || '').trim();
+    localStorage.setItem(`ahui_reportEmail${i}`, val);
+    if (val) emails.push(val);
+  }
+
+  // 把收件人名單同步到 Apps Script（讓每月發信用）
+  if (emails.length > 0) {
+    const {webhookUrl} = getConfig();
+    fetch(webhookUrl, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        apiKey: webhookKey,
+        action: 'updateReportEmails',
+        emails: emails
+      })
+    }).catch(() => {}); // 靜默失敗，不影響儲存
+  }
+
   closeSettings();
   alert('✅ 設定已儲存');
 }
