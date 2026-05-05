@@ -566,16 +566,13 @@ async function callGemini(base64Image) {
   catch { throw new Error('辨識結果格式異常，請再試一次'); }
 }
 
-// ── 寫入 Sheets ──
+// ── 寫入 Sheets（用 GET 避免 CORS）──
 async function writeToSheets(data) {
   const {webhookUrl, webhookKey} = getConfig();
-  const res = await fetch(webhookUrl, {
-    method: 'POST',
-    headers: {'Content-Type': 'text/plain;charset=utf-8'},
-    body: JSON.stringify({apiKey: webhookKey, data})
-  });
-  // Apps Script 部署為「任何人可存取」時會自動處理 CORS
-  // 若仍有 CORS 問題代表部署設定不正確
+  // Apps Script POST 有 CORS 限制，改用 GET + query string 繞過
+  const payload = encodeURIComponent(JSON.stringify({apiKey: webhookKey, data}));
+  const url = `${webhookUrl}?payload=${payload}`;
+  const res = await fetch(url, {method: 'GET'});
   if (!res.ok) throw new Error(`寫入失敗: HTTP ${res.status}`);
   const result = await res.json();
   if (!result.success) throw new Error(result.error || '寫入失敗');
