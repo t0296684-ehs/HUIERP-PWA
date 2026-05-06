@@ -1,6 +1,6 @@
 // 柏輝木品 中繼 API - 轉發請求到 Apps Script
 
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzxn7rXrh43EPOPuc4Xdsq1dlUGAN8X4r-RzXEyDNZOqc0QkphsYSYXRPKV5doq_fe8/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyPhOwgDzOovYi6uUByBsuuX7ZqgkOXpbLLDokjZPTN8RsG5vZKaVE0wxvE7IvuLeLhow/exec';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
